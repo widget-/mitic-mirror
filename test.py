@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-DB_PATH = SCRIPT_DIR / "mitic.db"
+DB_PATH = SCRIPT_DIR / "mitic_clean.db"
 STATIC_DIR = SCRIPT_DIR / "frontend" / "public" / "data"
 FRONTEND_DIR = SCRIPT_DIR / "frontend"
 DIST_DIR = FRONTEND_DIR / "dist"
@@ -56,19 +56,18 @@ def test_data():
 
     # Check core tables exist
     tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    required = {'tx_weekly_regulars', 'challenge_match', 'pea', 'wrh', 'c2026_weekly_data',
-                'weekly_performance', 'events', 'news', 'users', 'terminology', 'rules',
+    required = {'players', 'matches', 'tournament_results', 'standings',
+                'weekly_results', 'events', 'news', 'users', 'terminology', 'rules',
                 'ref_clinic', 'shots', 'videos', 'variations', 'hybrid_seeding'}
     missing = required - tables
     assert_eq(len(missing), 0, f"missing tables: {missing}")
 
     # Row counts
     counts = {
-        'tx_weekly_regulars': (100, 3000),  # players
-        'challenge_match': (5000, 50000),    # matches
-        'pea': (1000, 50000),               # tournament archive
-        'wrh': (50, 500),                   # WRH standings
-        'c2026_weekly_data': (50, 500),     # current season
+        'players': (100, 3000),       # players
+        'matches': (5000, 50000),      # matches
+        'tournament_results': (1000, 50000),  # tournament archive
+        'standings': (200, 1000),     # unified standings
     }
     for table, (min_rows, max_rows) in counts.items():
         count = conn.execute(f"SELECT COUNT(*) FROM \"{table}\"").fetchone()[0]
@@ -77,39 +76,43 @@ def test_data():
             assert_true(count < max_rows, f"{table}: {count} rows ≥ {max_rows}")
 
     # Check player table schema
-    p_cols = {r[1] for r in conn.execute("PRAGMA table_info(tx_weekly_regulars)")}
-    for col in ['name', 'mitic', 'rank', 'region', 'location']:
+    p_cols = {r[1] for r in conn.execute("PRAGMA table_info(players)")}
+    for col in ['name', 'mitic', 'world_rank', 'region', 'location', 'elo']:
         assert_true(col in p_cols, f"missing column: {col}")
 
     # Players have names
-    null_names = conn.execute("SELECT COUNT(*) FROM tx_weekly_regulars WHERE name IS NULL OR name = ''").fetchone()[0]
+    null_names = conn.execute("SELECT COUNT(*) FROM players WHERE name IS NULL OR name = ''").fetchone()[0]
     assert_eq(null_names, 0, f"{null_names} players with empty names")
 
-    # Challenge match has key columns
-    cm_cols = {r[1] for r in conn.execute("PRAGMA table_info(challenge_match)")}
-    for col in ['player_1', 'player_2', 'winner', 'p1_rating', 'p2_rating']:
-        assert_true(col in cm_cols, f"challenge_match missing column: {col}")
+    # Match table has key columns
+    cm_cols = {r[1] for r in conn.execute("PRAGMA table_info(matches)")}
+    for col in ['player1', 'player2', 'winner', 'p1_rating', 'p2_rating', 'date']:
+        assert_true(col in cm_cols, f"matches missing column: {col}")
 
-    # PEA has player+event+rank
-    pea_cols = {r[1] for r in conn.execute("PRAGMA table_info(pea)")}
+    # Tournament results has player+event+rank
+    pea_cols = {r[1] for r in conn.execute("PRAGMA table_info(tournament_results)")}
     for col in ['player', 'event', 'rank']:
-        assert_true(col in pea_cols, f"pea missing column: {col}")
+        assert_true(col in pea_cols, f"tournament_results missing column: {col}")
 
-    # WRH has points
-    wrh_cols = {r[1] for r in conn.execute("PRAGMA table_info(wrh)")}
-    for col in ['player_name', 'points', 'wr']:
-        assert_true(col in wrh_cols, f"wrh missing column: {col}")
+    # Standings has player+points+season
+    wrh_cols = {r[1] for r in conn.execute("PRAGMA table_info(standings)")}
+    for col in ['player', 'points', 'position', 'season']:
+        assert_true(col in wrh_cols, f"standings missing column: {col}")
 
-    # Archive metadata
-    meta = {r[0]: r[1] for r in conn.execute("SELECT key, value FROM _archive_meta")}
-    assert_true('archived_at' in meta, "missing archive timestamp")
-    assert_true('total_rows' in meta, "missing total_rows meta")
-    assert_gt(int(meta['total_rows']), 10000, f"too few total rows: {meta['total_rows']}")
+    # Archive metadata — check the clean DB has data
+    count_players = conn.execute("SELECT COUNT(*) FROM players").fetchone()[0]
+    count_matches = conn.execute("SELECT COUNT(*) FROM matches").fetchone()[0]
+    assert_gt(count_players, 500, f"too few players: {count_players}")
+    assert_gt(count_matches, 5000, f"too few matches: {count_matches}")
+    total = count_players + count_matches + sum(
+        conn.execute(f"SELECT COUNT(*) FROM \"{t}\"").fetchone()[0]
+        for t in required if t not in ('players', 'matches')
+    )
 
     conn.close()
     print(f"    DB size: {DB_PATH.stat().st_size / 1024 / 1024:.0f} MB")
     print(f"    Tables: {len(tables)}")
-    print(f"    Total rows: {meta.get('total_rows', '?')}")
+    print(f"    Total rows: {total}")
 
 # ─── Static build tests ───────────────────────────────
 
@@ -117,7 +120,7 @@ def test_static_build():
     assert_true(STATIC_DIR.exists(), f"static data dir not found at {STATIC_DIR}")
 
     required_json = {
-        'players.json', 'matches.json', 'pea.json', 'wrh.json', 'standings.json',
+        'players.json', 'matches.json', 'tournament_results.json', 'standings.json',
         'weeklies.json', 'regions.json', 'terminology.json', 'rules.json',
         'shots.json', 'ref_clinic.json', 'videos.json', 'news.json',
         'events.json', 'users.json', 'hybrid_seeding.json',
@@ -138,16 +141,16 @@ def test_static_build():
     # Check specific expected counts
     players = json.load(open(STATIC_DIR / 'players.json'))
     matches = json.load(open(STATIC_DIR / 'matches.json'))
-    pea = json.load(open(STATIC_DIR / 'pea.json'))
+    peas = json.load(open(STATIC_DIR / 'tournament_results.json'))
     regions = json.load(open(STATIC_DIR / 'regions.json'))
 
     assert_gt(len(players), 500, f"only {len(players)} players")
     assert_gt(len(matches), 5000, f"only {len(matches)} matches")
-    assert_gt(len(pea), 1000, f"only {len(pea)} PEA rows")
+    assert_gt(len(peas), 1000, f"only {len(peas)} tournament results")
     assert_gt(len(regions), 2, f"only {len(regions)} regions")
 
     # Check file sizes
-    for fname in ['players.json', 'matches.json', 'pea.json']:
+    for fname in ['players.json', 'matches.json', 'tournament_results.json']:
         size = (STATIC_DIR / fname).stat().st_size
         print(f"    {fname}: {size / 1024:.0f} KB ({len(json.load(open(STATIC_DIR / fname)))} rows)")
 
