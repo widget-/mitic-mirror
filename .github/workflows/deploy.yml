@@ -57,6 +57,9 @@ jobs:
       - name: Run tests
         run: python3 test.py
 
+      - name: Run tests
+        run: python3 test.py
+
       - name: Build frontend
         run: npm run build
         working-directory: frontend
