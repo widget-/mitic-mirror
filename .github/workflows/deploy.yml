@@ -51,6 +51,9 @@ jobs:
           CHROME_PATH: /usr/bin/chromium-browser
         run: python3 archive.py --db mitic.db
 
+      - name: Build clean database
+        run: python3 build-clean.py
+
       - name: Build static JSON
         run: python3 build-static.py
 

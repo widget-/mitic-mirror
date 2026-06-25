@@ -34,6 +34,7 @@ case "${1:-help}" in
     ;;
   static)
     echo "Building static JSON + frontend for GitHub Pages..."
+    python3 build-clean.py
     python3 build-static.py
     cd frontend && npm run build
     echo ""
