@@ -328,7 +328,20 @@ export default {
       if (this.rSort !== col) return '';
       return this.rOrder === 'desc' ? '▼' : '▲';
     },
-    debounce(fn) { clearTimeout(this._timer); this._timer = setTimeout(fn, 250); },
+    sortDate(a, b) {
+      // Parse dates like "8/5/23", "1/1/73", "1/1/2014", "1-29-06" into YYYYMMDD for comparison
+      const p = (s) => {
+        if (!s) return 0;
+        const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+        if (!m) return 0;
+        let [, month, day, year] = m;
+        month = month.padStart(2, '0');
+        day = day.padStart(2, '0');
+        if (year.length === 2) year = +year < 70 ? '20' + year : '19' + year;
+        return +(year + month + day);
+      };
+      return p(b.date) - p(a.date) || (b.id || 0) - (a.id || 0);
+    },
     async api(path) {
       // Try the API first; fall back to static JSON files
       try {
@@ -359,7 +372,7 @@ export default {
         const name = playerRow?.name;
         if (!name) return { total: 0, data: [] };
         const filtered = all.filter(m => m.player1 === name || m.player2 === name)
-          .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id || 0) - (a.id || 0));
+          .sort((a, b) => this.sortDate(a, b) || (b.id || 0) - (a.id || 0));
         const o = +qs.offset || 0, l = +qs.limit || 50;
         return { total: filtered.length, data: filtered.slice(o, o + l), player: name };
       }
@@ -369,7 +382,7 @@ export default {
         const playerRow = await this._staticQuery(`players/${parts[1]}`);
         const name = playerRow?.name;
         if (!name) return { total: 0, data: [] };
-        const filtered = all.filter(t => t.player === name).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        const filtered = all.filter(t => t.player === name).sort((a, b) => this.sortDate(a, b));
         const o = +qs.offset || 0, l = +qs.limit || 50;
         return { total: filtered.length, data: filtered.slice(o, o + l), player: name };
       }
