@@ -194,8 +194,14 @@ def test_static_mode():
     import threading
     import time
     import urllib.request
+    import socket
 
-    port = 18923  # unlikely to conflict
+    # Find a free port
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind(('', 0))
+    port = sock.getsockname()[1]
+    sock.close()
+
     os.chdir(str(DIST_DIR))
 
     Handler = http.server.SimpleHTTPRequestHandler
