@@ -350,7 +350,8 @@ export default {
         const playerRow = await this._staticQuery(`players/${parts[1]}`);
         const name = playerRow?.name;
         if (!name) return { total: 0, data: [] };
-        const filtered = all.filter(m => m.player1 === name || m.player2 === name);
+        const filtered = all.filter(m => m.player1 === name || m.player2 === name)
+          .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id || 0) - (a.id || 0));
         const o = +qs.offset || 0, l = +qs.limit || 50;
         return { total: filtered.length, data: filtered.slice(o, o + l), player: name };
       }
