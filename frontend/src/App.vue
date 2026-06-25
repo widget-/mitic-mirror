@@ -288,6 +288,7 @@ export default {
     contentTable: '', contentData: [],
     // debounce
     _timer: null,
+    _staticCache: {},
   }),
   computed: {
     contentTitle() { const t = this.contentTable; return { terminology:'Terminology', rules:'Rules', shots:'Shots Library', ref_clinic:'Referee Clinic', videos:'Videos', news:'News' }[t] || t; }
@@ -320,7 +321,6 @@ export default {
       return this.rOrder === 'desc' ? '▼' : '▲';
     },
     debounce(fn) { clearTimeout(this._timer); this._timer = setTimeout(fn, 250); },
-    _staticCache: {},
     async api(path) {
       // Try the API first; fall back to static JSON files
       try {
