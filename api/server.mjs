@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, '..', 'mitic.db');
+const DB_PATH = join(__dirname, '..', 'mitic_clean.db');
 
 function db() {
   const d = new Database(DB_PATH, { readonly: true });
@@ -41,7 +41,7 @@ app.get('/api/tables/:table', (req, res) => {
       return res.status(404).json({ ok: false, error: 'not found' });
     const { sort, order, limit = 100, offset = 0 } = req.query;
     const cols = d.prepare(`PRAGMA table_info("${t}")`).all().map(c => c.name);
-    let sc = '_row_index', sd = 'ASC';
+    let sc = 'id', sd = 'ASC';
     if (sort && cols.includes(sort.replace(/[^a-zA-Z0-9_]/g, ''))) { sc = sort.replace(/[^a-zA-Z0-9_]/g, ''); sd = order === 'asc' ? 'ASC' : 'DESC'; }
     const total = d.prepare(`SELECT COUNT(*) AS c FROM "${t}"`).get().c;
     const data = d.prepare(`SELECT * FROM "${t}" ORDER BY "${sc}" ${sd} NULLS LAST LIMIT ? OFFSET ?`).all(parseInt(limit), parseInt(offset));
@@ -54,7 +54,7 @@ app.get('/api/tables/:table', (req, res) => {
 app.get('/api/players', (req, res) => {
   try {
     const d = db();
-    const tbl = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tx_weekly_regulars'").get()?.name;
+    const tbl = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='players'").get()?.name;
     if (!tbl) return res.json({ total: 0, data: [] });
     const { sort = 'mitic', order = 'desc', limit = 100, offset = 0, search, region, min_mitic, max_mitic } = req.query;
     const allowed = ['mitic','mitic_traditional','new_elo','rank','name','weekly_level','defense_pct'];
@@ -77,12 +77,12 @@ app.get('/api/players', (req, res) => {
 app.get('/api/players/:id/matches', (req, res) => {
   try {
     const d = db();
-    const player = d.prepare("SELECT name FROM tx_weekly_regulars WHERE _row_index = ?").get(+req.params.id);
+    const player = d.prepare("SELECT name FROM players WHERE id = ?").get(+req.params.id);
     if (!player) return res.status(404).json({ ok: false, error: 'player not found' });
     const { limit = 50, offset = 0 } = req.query;
     const name = player.name;
-    const total = d.prepare("SELECT COUNT(*) AS c FROM challenge_match WHERE player_1 = ? OR player_2 = ?").get(name, name).c;
-    const data = d.prepare("SELECT * FROM challenge_match WHERE player_1 = ? OR player_2 = ? ORDER BY _row_index DESC LIMIT ? OFFSET ?").all(name, name, +limit, +offset);
+    const total = d.prepare("SELECT COUNT(*) AS c FROM matches WHERE player1 = ? OR player2 = ?").get(name, name).c;
+    const data = d.prepare("SELECT * FROM matches WHERE player1 = ? OR player2 = ? ORDER BY id DESC LIMIT ? OFFSET ?").all(name, name, +limit, +offset);
     d.close();
     res.json({ total, offset: +offset, limit: +limit, player: name, data });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -92,11 +92,11 @@ app.get('/api/players/:id/matches', (req, res) => {
 app.get('/api/players/:id/tournaments', (req, res) => {
   try {
     const d = db();
-    const player = d.prepare("SELECT name FROM tx_weekly_regulars WHERE _row_index = ?").get(+req.params.id);
+    const player = d.prepare("SELECT name FROM players WHERE id = ?").get(+req.params.id);
     if (!player) return res.status(404).json({ ok: false, error: 'player not found' });
     const { limit = 100, offset = 0 } = req.query;
-    const total = d.prepare("SELECT COUNT(*) AS c FROM pea WHERE player = ?").get(player.name).c;
-    const data = d.prepare("SELECT * FROM pea WHERE player = ? ORDER BY date DESC LIMIT ? OFFSET ?").all(player.name, +limit, +offset);
+    const total = d.prepare("SELECT COUNT(*) AS c FROM tournament_results WHERE player = ?").get(player.name).c;
+    const data = d.prepare("SELECT * FROM tournament_results WHERE player = ? ORDER BY date DESC LIMIT ? OFFSET ?").all(player.name, +limit, +offset);
     d.close();
     res.json({ total, offset: +offset, limit: +limit, player: player.name, data });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -106,13 +106,13 @@ app.get('/api/players/:id/tournaments', (req, res) => {
 app.get('/api/players/:id/standings', (req, res) => {
   try {
     const d = db();
-    const player = d.prepare("SELECT name FROM tx_weekly_regulars WHERE _row_index = ?").get(+req.params.id);
+    const player = d.prepare("SELECT name FROM players WHERE id = ?").get(+req.params.id);
     if (!player) return res.status(404).json({ ok: false, error: 'player not found' });
     const name = player.name;
     const parts = name.split(' ');
     const alt = parts.length >= 2 ? `${parts[parts.length-1]}, ${parts.slice(0,-1).join(' ')}` : name;
-    const wrh = d.prepare("SELECT * FROM wrh WHERE player_name = ? OR player_name = ?").get(name, alt);
-    const weekly = d.prepare("SELECT * FROM c2026_weekly_data WHERE player_name = ? OR player_name = ?").get(name, alt);
+    const wrh = d.prepare("SELECT * FROM standings WHERE season='WRH' AND (player = ? OR player = ?)").get(name, alt);
+    const weekly = d.prepare("SELECT * FROM standings WHERE season='2026' AND (player = ? OR player = ?)").get(name, alt);
     d.close();
     res.json({ player: name, wrh, weekly });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -122,9 +122,9 @@ app.get('/api/players/:id/standings', (req, res) => {
 app.get('/api/players/:id', (req, res) => {
   try {
     const d = db();
-    const tbl = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='tx_weekly_regulars'").get()?.name;
+    const tbl = d.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='players'").get()?.name;
     if (!tbl) return res.status(404).json({ ok: false, error: 'no players table' });
-    const player = d.prepare(`SELECT * FROM "${tbl}" WHERE _row_index = ?`).get(+req.params.id);
+    const player = d.prepare(`SELECT * FROM "${tbl}" WHERE id = ?`).get(+req.params.id);
     if (!player) return res.status(404).json({ ok: false, error: 'not found' });
     d.close();
     res.json(player);
@@ -135,7 +135,7 @@ app.get('/api/players/:id', (req, res) => {
 app.get('/api/regions', (req, res) => {
   try {
     const d = db();
-    const data = d.prepare("SELECT region, COUNT(*) AS count FROM tx_weekly_regulars WHERE region != '' AND region IS NOT NULL GROUP BY region ORDER BY region").all();
+    const data = d.prepare("SELECT region, COUNT(*) AS count FROM players WHERE region != '' AND region IS NOT NULL GROUP BY region ORDER BY region").all();
     d.close();
     res.json(data);
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -146,8 +146,8 @@ app.get('/api/weeklies', (req, res) => {
   try {
     const d = db();
     const { limit = 50, offset = 0 } = req.query;
-    const total = d.prepare("SELECT COUNT(*) AS c FROM weekly_performance").get().c;
-    const data = d.prepare("SELECT * FROM weekly_performance ORDER BY _row_index DESC LIMIT ? OFFSET ?").all(+limit, +offset);
+    const total = d.prepare("SELECT COUNT(*) AS c FROM weekly_results").get().c;
+    const data = d.prepare("SELECT * FROM weekly_results ORDER BY id DESC LIMIT ? OFFSET ?").all(+limit, +offset);
     d.close();
     res.json({ total, offset: +offset, limit: +limit, data });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -158,9 +158,9 @@ app.get('/api/standings', (req, res) => {
   try {
     const d = db();
     const { year = '2026', limit = 100, offset = 0 } = req.query;
-    // c2026_weekly_data has the current season
-    const data = d.prepare("SELECT * FROM c2026_weekly_data ORDER BY points DESC NULLS LAST LIMIT ? OFFSET ?").all(+limit, +offset);
-    const total = d.prepare("SELECT COUNT(*) AS c FROM c2026_weekly_data").get().c;
+    // standings has the current season
+    const data = d.prepare("SELECT * FROM standings WHERE season='2026' ORDER BY points DESC NULLS LAST LIMIT ? OFFSET ?").all(+limit, +offset);
+    const total = d.prepare("SELECT COUNT(*) AS c FROM standings").get().c;
     d.close();
     res.json({ total, offset: +offset, limit: +limit, year, data });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -171,8 +171,8 @@ app.get('/api/wrh', (req, res) => {
   try {
     const d = db();
     const { limit = 100, offset = 0 } = req.query;
-    const total = d.prepare("SELECT COUNT(*) AS c FROM wrh").get().c;
-    const data = d.prepare("SELECT * FROM wrh ORDER BY wr ASC NULLS LAST LIMIT ? OFFSET ?").all(+limit, +offset);
+    const total = d.prepare("SELECT COUNT(*) AS c FROM standings WHERE season='WRH'").get().c;
+    const data = d.prepare("SELECT * FROM standings WHERE season='WRH' ORDER BY position ASC NULLS LAST LIMIT ? OFFSET ?").all(+limit, +offset);
     d.close();
     res.json({ total, offset: +offset, limit: +limit, data });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -185,7 +185,7 @@ app.get('/api/content/:table', (req, res) => {
   if (!allowed.includes(t)) return res.status(404).json({ ok: false, error: 'not found' });
   try {
     const d = db();
-    const data = d.prepare(`SELECT * FROM "${t}" ORDER BY _row_index`).all();
+    const data = d.prepare(`SELECT * FROM "${t}" ORDER BY id`).all();
     const total = data.length;
     d.close();
     res.json({ total, data });

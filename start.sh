@@ -26,7 +26,9 @@ case "${1:-help}" in
     echo "Running tests..."
     python3 test.py
     ;;
-    echo "Building static JSON data..."
+  build)
+    echo "Building clean database and static JSON..."
+    python3 build-clean.py
     python3 build-static.py
     echo "Building frontend..."
     cd frontend && npm run build
@@ -43,7 +45,9 @@ case "${1:-help}" in
     echo "Or just push to GitHub and the Actions workflow will deploy to Pages."
     ;;
   prod)
-    echo "Building frontend and starting production server on :3001..."
+    echo "Building clean DB + static JSON + frontend + starting server..."
+    python3 build-clean.py
+    python3 build-static.py
     cd frontend && npm run build
     cd ..
     node api/server.mjs
