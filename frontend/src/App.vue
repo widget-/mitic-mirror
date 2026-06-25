@@ -266,7 +266,7 @@
 </template>
 
 <script>
-const API = ''; // handled by api() method
+const BASE = import.meta.env.BASE_URL || '/';
 
 export default {
   data: () => ({
@@ -324,7 +324,7 @@ export default {
     async api(path) {
       // Try the API first; fall back to static JSON files
       try {
-        const r = await fetch('/api/' + path.split('?')[0].split('/').slice(1).join('/'));
+        const r = await fetch(BASE + 'api/' + path.split('?')[0].split('/').slice(1).join('/'));
         if (r.ok && r.status !== 404) return await r.json();
       } catch {}
       // Static fallback: map the path to a JSON file
@@ -337,7 +337,7 @@ export default {
       // Load a JSON file once, cache it
       const loadJson = async (file) => {
         if (this._staticCache[file]) return this._staticCache[file];
-        const r = await fetch('/data/' + file + '.json');
+        const r = await fetch(BASE + 'data/' + file + '.json');
         if (!r.ok) return [];
         const data = await r.json();
         this._staticCache[file] = data;
