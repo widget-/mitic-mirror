@@ -54,17 +54,14 @@ jobs:
       - name: Build static JSON
         run: python3 build-static.py
 
-      - name: Run tests
-        run: python3 test.py
-
-      - name: Run tests
-        run: python3 test.py
-
       - name: Build frontend
         run: npm run build
         working-directory: frontend
         env:
           VITE_BASE_URL: /${{ github.event.repository.name }}/
+
+      - name: Run tests
+        run: python3 test.py
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
