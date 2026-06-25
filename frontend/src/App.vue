@@ -41,24 +41,24 @@
           <select v-model="rRegion" @change="rPage=1;fetchPlayers()"><option value="">All Regions</option><option v-for="r in regions" :key="r.region" :value="r.region">{{ r.region }} ({{ r.count }})</option></select>
           <select v-model="rSort" @change="rOrder='desc';fetchPlayers()">
             <option value="mitic">MITIC high→low</option>
-            <option value="rank">World Rank</option>
+            <option value="world_rank">World Rank</option>
             <option value="name">Name A–Z</option>
             <option value="mitic_traditional">Traditional MITIC</option>
-            <option value="new_elo">ELO Rating</option>
+            <option value="elo">ELO Rating</option>
             <option value="weekly_level">Weekly Level</option>
           </select>
           <span class="result">{{ rTotal }} players</span>
         </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th @click="toggleSort('rank')" class="s"># <span class="dir">{{ sortArrow('rank') }}</span></th><th @click="toggleSort('name')" class="s">Name <span class="dir">{{ sortArrow('name') }}</span></th><th>Nickname</th><th @click="toggleSort('mitic')" class="s">MITIC <span class="dir">{{ sortArrow('mitic') }}</span></th><th @click="toggleSort('mitic_traditional')" class="s">Trad <span class="dir">{{ sortArrow('mitic_traditional') }}</span></th><th @click="toggleSort('new_elo')" class="s">ELO <span class="dir">{{ sortArrow('new_elo') }}</span></th><th>Location</th><th>Region</th><th @click="toggleSort('weekly_level')" class="s">Lvl <span class="dir">{{ sortArrow('weekly_level') }}</span></th></tr></thead>
+          <thead><tr><th @click="toggleSort('world_rank')" class="s"># <span class="dir">{{ sortArrow('world_rank') }}</span></th><th @click="toggleSort('name')" class="s">Name <span class="dir">{{ sortArrow('name') }}</span></th><th>Nickname</th><th @click="toggleSort('mitic')" class="s">MITIC <span class="dir">{{ sortArrow('mitic') }}</span></th><th @click="toggleSort('mitic_traditional')" class="s">Trad <span class="dir">{{ sortArrow('mitic_traditional') }}</span></th><th @click="toggleSort('elo')" class="s">ELO <span class="dir">{{ sortArrow('elo') }}</span></th><th>Location</th><th>Region</th><th @click="toggleSort('weekly_level')" class="s">Lvl <span class="dir">{{ sortArrow('weekly_level') }}</span></th></tr></thead>
           <tbody>
-            <tr v-for="p in rData" :key="p._row_index" @click="openProfile(p)" class="clickable" :class="{wr:p.world_rank}">
-              <td class="rk">{{ displayRank(p.rank) }}</td>
-              <td class="nm">{{ p.name }}<span v-if="rankLabel(p.rank)" class="rk-label">{{ rankLabel(p.rank) }}</span></td>
+            <tr v-for="p in rData" :key="p.id" @click="openProfile(p)" class="clickable" :class="{wr:p.world_rank}">
+              <td class="rk">{{ displayRank(p.world_rank) }}</td>
+              <td class="nm">{{ p.name }}<span v-if="rankLabel(p.world_rank)" class="rk-label">{{ rankLabel(p.world_rank) }}</span></td>
               <td class="nk">{{ p.nickname || '—' }}</td>
               <td class="mt">{{ p.mitic ?? '—' }}</td>
               <td class="tr">{{ p.mitic_traditional ?? '—' }}</td>
-              <td class="el">{{ p.new_elo ? Math.round(p.new_elo) : '—' }}</td>
+              <td class="el">{{ p.elo ? Math.round(p.elo) : '—' }}</td>
               <td class="lc">{{ p.location || '—' }}</td>
               <td class="rg">{{ p.region || '—' }}</td>
               <td class="lv">{{ p.weekly_level ?? '—' }}</td>
@@ -74,10 +74,10 @@
         <div class="profile-grid">
           <div class="card stats">
             <h3>Ratings</h3>
-            <dl><dt>World Rank</dt><dd>{{ displayRank(profileData.rank) || 'Unranked' }}<span v-if="rankLabel(profileData.rank)" class="rk-label-badge">{{ rankLabel(profileData.rank) }}</span></dd>
+            <dl><dt>World Rank</dt><dd>{{ displayRank(profileData.world_rank) || 'Unranked' }}<span v-if="rankLabel(profileData.world_rank)" class="rk-label-badge">{{ rankLabel(profileData.world_rank) }}</span></dd>
               <dt>MITIC</dt><dd class="num">{{ profileData.mitic ?? '—' }}</dd>
               <dt>MITIC Traditional</dt><dd class="num">{{ profileData.mitic_traditional ?? '—' }}</dd>
-              <dt>ELO (New ElolE)</dt><dd class="num">{{ profileData.new_elo ? Math.round(profileData.new_elo) : '—' }}</dd>
+              <dt>ELO (New ElolE)</dt><dd class="num">{{ profileData.elo ? Math.round(profileData.elo) : '—' }}</dd>
               <dt>Weekly Level</dt><dd class="num">{{ profileData.weekly_level ?? '—' }}</dd>
               <dt>Shot %</dt><dd>{{ profileData.shot || '—' }}</dd>
               <dt>Defense %</dt><dd>{{ profileData.defense_pct != null ? profileData.defense_pct + '%' : '—' }}</dd>
@@ -98,11 +98,11 @@
             <table v-else class="compact">
               <thead><tr><th>Opponent</th><th>Rating</th><th>Result</th><th>Score</th><th>Location</th></tr></thead>
               <tbody>
-                <tr v-for="m in profileMatches" :key="m._row_index">
-                  <td>{{ m.player_1 === profileData.name ? m.player_2 : m.player_1 }}</td>
-                  <td class="num">{{ m.player_1 === profileData.name ? m.p1_rating : m.p2_rating }}</td>
+                <tr v-for="m in profileMatches" :key="m.id">
+                  <td>{{ m.player1 === profileData.name ? m.player2 : m.player1 }}</td>
+                  <td class="num">{{ m.player1 === profileData.name ? m.p1_rating : m.p2_rating }}</td>
                   <td :class="m.winner === profileData.name ? 'win' : 'loss'">{{ m.winner === profileData.name ? 'W' : 'L' }}</td>
-                  <td>{{ m.column9 || m.set_1 || '—' }}</td>
+                  <td>{{ m.total_p1 != null ? m.total_p1 + '-' + m.total_p2 : m.set1_p1 != null ? m.set1_p1 + '-' + m.set1_p2 : '—' }}</td>
                   <td class="loc">{{ m.location || '—' }}</td>
                 </tr>
               </tbody>
@@ -115,7 +115,7 @@
             <table v-else class="compact">
               <thead><tr><th>Event</th><th>Date</th><th>Rank</th></tr></thead>
               <tbody>
-                <tr v-for="t in profileTournaments" :key="t._row_index">
+                <tr v-for="t in profileTournaments" :key="t.id">
                   <td>{{ t.event }}</td><td>{{ t.date }}</td><td class="num">{{ t.rank }}</td>
                 </tr>
               </tbody>
@@ -132,18 +132,18 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>WR</th><th>Player</th><th>Level</th><th>Points</th><th>Played</th><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>Win %</th><th>Top 4 %</th></tr></thead>
           <tbody>
-            <tr v-for="r in wrhData" :key="r._row_index" @click="findAndOpenProfile(r.player_name)" class="clickable">
-              <td class="rk">{{ r.wr ?? '—' }}</td>
-              <td class="nm">{{ r.player_name }}</td>
+            <tr v-for="r in wrhData" :key="r.id" @click="findAndOpenProfile(r.player)" class="clickable">
+              <td class="rk">{{ r.position ?? '—' }}</td>
+              <td class="nm">{{ r.player }}</td>
               <td>{{ r.level || '—' }}</td>
               <td class="num">{{ r.points ?? '—' }}</td>
               <td>{{ r.played || '—' }}</td>
-              <td class="num">{{ r.c1st || '—' }}</td>
-              <td class="num">{{ r.c2nd || '—' }}</td>
-              <td class="num">{{ r.c3rd || '—' }}</td>
-              <td class="num">{{ r.c4th || '—' }}</td>
-              <td class="num">{{ r.win != null ? (r.win*100).toFixed(0) + '%' : '—' }}</td>
-              <td class="num">{{ r.top_4 != null ? (r.top_4*100).toFixed(0) + '%' : '—' }}</td>
+              <td class="num">{{ r.wins_1st || '—' }}</td>
+              <td class="num">{{ r.second_2nd || '—' }}</td>
+              <td class="num">{{ r.third_3rd || '—' }}</td>
+              <td class="num">{{ r.fourth_4th || '—' }}</td>
+              <td class="num">{{ r.win_pct != null ? (r.win_pct*100).toFixed(0) + '%' : '—' }}</td>
+              <td class="num">{{ r.top4_pct != null ? (r.top4_pct*100).toFixed(0) + '%' : '—' }}</td>
             </tr>
           </tbody>
         </table></div>
@@ -156,18 +156,18 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>#</th><th>Player</th><th>Level</th><th>Points</th><th>Played</th><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>Win %</th><th>Top 4 %</th></tr></thead>
           <tbody>
-            <tr v-for="(r,i) in standingsData" :key="r._row_index" @click="findAndOpenProfile(r.player_name)" class="clickable">
+            <tr v-for="(r,i) in standingsData" :key="r.id" @click="findAndOpenProfile(r.player)" class="clickable">
               <td class="rk">{{ (standingsPage-1)*100 + i + 1 }}</td>
-              <td class="nm">{{ r.player_name }}</td>
+              <td class="nm">{{ r.player }}</td>
               <td>{{ r.level || '—' }}</td>
               <td class="num">{{ r.points ?? '—' }}</td>
               <td>{{ r.played || '—' }}</td>
-              <td class="num">{{ r.c1st || '—' }}</td>
-              <td class="num">{{ r.c2nd || '—' }}</td>
-              <td class="num">{{ r.c3rd || '—' }}</td>
-              <td class="num">{{ r.c4th || '—' }}</td>
-              <td class="num">{{ r.win != null ? (r.win*100).toFixed(0)+'%' : '—' }}</td>
-              <td class="num">{{ r.top_4 != null ? (r.top_4*100).toFixed(0)+'%' : '—' }}</td>
+              <td class="num">{{ r.wins_1st || '—' }}</td>
+              <td class="num">{{ r.second_2nd || '—' }}</td>
+              <td class="num">{{ r.third_3rd || '—' }}</td>
+              <td class="num">{{ r.fourth_4th || '—' }}</td>
+              <td class="num">{{ r.win_pct != null ? (r.win_pct*100).toFixed(0)+'%' : '—' }}</td>
+              <td class="num">{{ r.top4_pct != null ? (r.top4_pct*100).toFixed(0)+'%' : '—' }}</td>
             </tr>
           </tbody>
         </table></div>
@@ -184,14 +184,14 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>Player 1</th><th>Rating</th><th>vs</th><th>Player 2</th><th>Rating</th><th>Winner</th><th>Score</th><th>Location</th><th>Date</th></tr></thead>
           <tbody>
-            <tr v-for="m in matchData" :key="m._row_index" class="clickable" @click="findAndOpenProfile(m.winner)">
-              <td class="nm">{{ m.player_1 }}</td><td class="num">{{ m.p1_rating ?? '—' }}</td>
+            <tr v-for="m in matchData" :key="m.id" class="clickable" @click="findAndOpenProfile(m.winner)">
+              <td class="nm">{{ m.player1 }}</td><td class="num">{{ m.p1_rating ?? '—' }}</td>
               <td>vs</td>
-              <td class="nm">{{ m.player_2 }}</td><td class="num">{{ m.p2_rating ?? '—' }}</td>
+              <td class="nm">{{ m.player2 }}</td><td class="num">{{ m.p2_rating ?? '—' }}</td>
               <td class="win">{{ m.winner }}</td>
-              <td>{{ m.column9 || m.set_1 || '—' }}</td>
+              <td>{{ m.total_p1 != null ? m.total_p1 + '-' + m.total_p2 : m.set1_p1 != null ? m.set1_p1 + '-' + m.set1_p2 : '—' }}</td>
               <td class="loc">{{ m.location || '—' }}</td>
-              <td class="loc">{{ m.column1 ? new Date(m.column1).toLocaleDateString() : '—' }}</td>
+              <td class="loc">{{ m.date ? new Date(m.date).toLocaleDateString() : '—' }}</td>
             </tr>
           </tbody>
         </table></div>
@@ -204,14 +204,14 @@
         <div class="tbl-wrap"><table>
           <thead><tr><th>Date</th><th>Players</th><th>Winner Lvl</th><th>1st</th><th>2nd</th><th>3rd</th><th>4th</th><th>5-6</th><th>7-8</th><th>9-12</th><th>13-16</th></tr></thead>
           <tbody>
-            <tr v-for="w in weeklyData" :key="w._row_index">
-              <td>{{ w.c7_6_friday || '—' }}</td>
+            <tr v-for="w in weeklyData" :key="w.id">
+              <td>{{ w.date || '—' }}</td>
               <td>{{ w.player_count || '—' }}</td>
               <td>{{ w.winner_level || '—' }}</td>
-              <td class="nm">{{ w.c1st || '—' }}</td>
-              <td class="nm">{{ w.c2nd || '—' }}</td>
-              <td class="nm">{{ w.c3rd || '—' }}</td>
-              <td class="nm">{{ w.c4th || '—' }}</td>
+              <td class="nm">{{ w.first || '—' }}</td>
+              <td class="nm">{{ w.second || '—' }}</td>
+              <td class="nm">{{ w.third || '—' }}</td>
+              <td class="nm">{{ w.fourth || '—' }}</td>
               <td>{{ [w.c5_6, w.c5_6_a].filter(Boolean).join(', ') || '—' }}</td>
               <td>{{ [w.c7_8, w.c7_8_a].filter(Boolean).join(', ') || '—' }}</td>
               <td>{{ [w.c9_12, w.c9_12_a, w.c9_12_b, w.c9_12_c].filter(Boolean).join(', ') || '—' }}</td>
@@ -225,7 +225,7 @@
       <!-- Content Page -->
       <section v-if="page==='content'">
         <header><h2>{{ contentTitle }}</h2></header>
-        <div class="content-body" v-for="item in contentData" :key="item._row_index">
+        <div class="content-body" v-for="item in contentData" :key="item.id || item._row_index">
           <div v-if="contentTable==='terminology'" class="term-card">
             <h3>{{ item.name }}</h3>
             <p>{{ item.definition }}</p>
@@ -350,13 +350,13 @@ export default {
         const playerRow = await this._staticQuery(`players/${parts[1]}`);
         const name = playerRow?.name;
         if (!name) return { total: 0, data: [] };
-        const filtered = all.filter(m => m.player_1 === name || m.player_2 === name);
+        const filtered = all.filter(m => m.player1 === name || m.player2 === name);
         const o = +qs.offset || 0, l = +qs.limit || 50;
         return { total: filtered.length, data: filtered.slice(o, o + l), player: name };
       }
       // /api/players/:id/tournaments
       if (parts[0] === 'players' && parts[2] === 'tournaments') {
-        const all = await loadJson('pea');
+        const all = await loadJson('tournament_results');
         const playerRow = await this._staticQuery(`players/${parts[1]}`);
         const name = playerRow?.name;
         if (!name) return { total: 0, data: [] };
@@ -369,21 +369,21 @@ export default {
         const playerRow = await this._staticQuery(`players/${parts[1]}`);
         const name = playerRow?.name;
         if (!name) return { player: '' };
-        const wrh = await loadJson('wrh');
+        const wrh = await loadJson('standings');
         const weekly = await loadJson('standings');
         const parts2 = name.split(' ');
         const alt = parts2.length >= 2 ? `${parts2[parts2.length-1]}, ${parts2.slice(0,-1).join(' ')}` : name;
         return {
           player: name,
-          wrh: wrh.find(r => r.player_name === name || r.player_name === alt) || null,
-          weekly: weekly.find(r => r.player_name === name || r.player_name === alt) || null,
+          wrh: wrh.find(r => (r.player === name || r.player === alt) && r.season === 'WRH') || null,
+          weekly: weekly.find(r => (r.player === name || r.player === alt) && r.season === '2026') || null,
         };
       }
       // /api/players/:id
       if (parts[0] === 'players' && parts.length === 2) {
         const all = await loadJson('players');
         const id = +parts[1];
-        return all.find(p => p._row_index === id) || null;
+        return all.find(p => p.id === id) || null;
       }
       // /api/players?...
       if (parts[0] === 'players') {
@@ -405,10 +405,11 @@ export default {
         const o = +qs.offset || 0, l = +qs.limit || 100;
         return { total: all.length, data: all.slice(o, o + l), offset: o, limit: l };
       }
-      // /api/wrh
+      // /api/wrh → standings filtered by season='WRH'
       if (parts[0] === 'wrh') {
-        let all = await loadJson('wrh');
-        const sc = qs.sort || 'wr';
+        let all = await loadJson('standings');
+        all = all.filter(s => s.season === 'WRH');
+        const sc = qs.sort || 'position';
         const sd = qs.order === 'asc' ? 1 : -1;
         all.sort((a, b) => {
           const va = a[sc], vb = b[sc];
@@ -418,17 +419,18 @@ export default {
         const o = +qs.offset || 0, l = +qs.limit || 100;
         return { total: all.length, data: all.slice(o, o + l), offset: o, limit: l };
       }
-      // /api/standings
+      // /api/standings → filter by season='2026'
       if (parts[0] === 'standings') {
         const all = await loadJson('standings');
-        all.sort((a, b) => (b.points||0) - (a.points||0));
+        const filtered = all.filter(s => s.season === '2026');
+        filtered.sort((a, b) => (b.points||0) - (a.points||0));
         const o = +qs.offset || 0, l = +qs.limit || 100;
-        return { total: all.length, data: all.slice(o, o + l), offset: o, limit: l };
+        return { total: filtered.length, data: filtered.slice(o, o + l), offset: o, limit: l };
       }
       // /api/weeklies
       if (parts[0] === 'weeklies') {
         const all = await loadJson('weeklies');
-        all.sort((a, b) => (b._row_index||0) - (a._row_index||0));
+        all.sort((a, b) => (b.id||0) - (a.id||0));
         const o = +qs.offset || 0, l = +qs.limit || 50;
         return { total: all.length, data: all.slice(o, o + l), offset: o, limit: l };
       }
@@ -462,9 +464,9 @@ export default {
       this.profilePlayer = p.name; this.profileData = p; this.pmPage = 1; this.ptPage = 1;
       this.page = 'profile';
       const [matches, tournaments, standings] = await Promise.all([
-        this.api(`/players/${p._row_index}/matches?limit=20`),
-        this.api(`/players/${p._row_index}/tournaments?limit=20`),
-        this.api(`/players/${p._row_index}/standings`),
+        this.api(`/players/${p.id}/matches?limit=20`),
+        this.api(`/players/${p.id}/tournaments?limit=20`),
+        this.api(`/players/${p.id}/standings`),
       ]);
       this.profileMatches = matches.data || [];
       this.profileMatchTotal = matches.total || 0;
@@ -478,12 +480,12 @@ export default {
       if (j.data?.length) { await this.openProfile(j.data[0]); }
     },
     async loadMoreMatches() {
-      const j = await this.api(`/players/${this.profileData._row_index}/matches?offset=${this.profileMatches.length}&limit=50`);
+      const j = await this.api(`/players/${this.profileData.id}/matches?offset=${this.profileMatches.length}&limit=50`);
       this.profileMatches = [...this.profileMatches, ...(j.data||[])];
       this.profileMatchTotal = j.total;
     },
     async loadMoreTournaments() {
-      const j = await this.api(`/players/${this.profileData._row_index}/tournaments?offset=${this.profileTournaments.length}&limit=50`);
+      const j = await this.api(`/players/${this.profileData.id}/tournaments?offset=${this.profileTournaments.length}&limit=50`);
       this.profileTournaments = [...this.profileTournaments, ...(j.data||[])];
       this.profileTournTotal = j.total;
     },

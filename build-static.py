@@ -10,29 +10,29 @@ import shutil
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-DB_PATH = SCRIPT_DIR / "mitic.db"
+DB_PATH = SCRIPT_DIR / "mitic_clean.db"
 STATIC_DIR = SCRIPT_DIR / "frontend" / "public" / "data"
 
 # Tables to dump as static JSON
 TABLES = {
     "players": {
-        "sql": "SELECT * FROM tx_weekly_regulars ORDER BY CAST(rank AS INTEGER) ASC NULLS LAST",
-        "index": "_row_index",
-    },
-    "wrh": {
-        "sql": "SELECT * FROM wrh ORDER BY wr ASC NULLS LAST",
-    },
-    "standings": {
-        "sql": "SELECT * FROM c2026_weekly_data ORDER BY points DESC NULLS LAST",
-    },
-    "weeklies": {
-        "sql": "SELECT * FROM weekly_performance ORDER BY _row_index DESC",
+        "sql": "SELECT * FROM players ORDER BY world_rank ASC NULLS LAST, mitic DESC",
+        "index": "id",
     },
     "matches": {
-        "sql": "SELECT * FROM challenge_match ORDER BY _row_index DESC",
+        "sql": "SELECT * FROM matches ORDER BY id DESC",
+    },
+    "tournament_results": {
+        "sql": "SELECT * FROM tournament_results ORDER BY id",
+    },
+    "standings": {
+        "sql": "SELECT * FROM standings ORDER BY season, points DESC",
+    },
+    "weeklies": {
+        "sql": "SELECT * FROM weekly_results ORDER BY id DESC",
     },
     "regions": {
-        "sql": "SELECT region, COUNT(*) AS count FROM tx_weekly_regulars WHERE region != '' AND region IS NOT NULL GROUP BY region ORDER BY region",
+        "sql": "SELECT region, COUNT(*) AS count FROM players WHERE region != '' AND region IS NOT NULL GROUP BY region ORDER BY region",
     },
     "terminology": {"sql": "SELECT * FROM terminology ORDER BY _row_index"},
     "rules": {"sql": "SELECT * FROM rules ORDER BY _row_index"},
@@ -44,18 +44,6 @@ TABLES = {
     "users": {"sql": "SELECT * FROM users ORDER BY _row_index"},
     "variations": {"sql": "SELECT * FROM variations ORDER BY _row_index"},
     "hybrid_seeding": {"sql": "SELECT * FROM hybrid_seeding ORDER BY _row_index"},
-    "cartercup_history": {"sql": "SELECT * FROM cartercup_history ORDER BY _row_index"},
-    "pea": {"sql": "SELECT * FROM pea ORDER BY _row_index"},
-    "breakdown": {"sql": "SELECT * FROM breakdown ORDER BY _row_index"},
-    "play_puck": {"sql": "SELECT * FROM play_puck ORDER BY _row_index"},
-    "pole_sheet": {"sql": "SELECT * FROM pole_sheet ORDER BY _row_index"},
-    "booth": {"sql": "SELECT * FROM booth ORDER BY _row_index"},
-    "copy_of_tables": {"sql": "SELECT * FROM copy_of_tables ORDER BY _row_index"},
-    "dues": {"sql": "SELECT * FROM dues ORDER BY _row_index"},
-    "contact": {"sql": "SELECT * FROM contact ORDER BY _row_index"},
-    "weekly_signup": {"sql": "SELECT * FROM weekly_signup ORDER BY _row_index"},
-    "weekly_top_4": {"sql": "SELECT * FROM weekly_top_4 ORDER BY _row_index"},
-    "last_5": {"sql": "SELECT * FROM last_5 ORDER BY _row_index"},
 }
 
 # Special serialisation: convert non-serialisable types
