@@ -286,12 +286,20 @@ export default {
     weeklyData: [], weeklyTotal: 0, weeklyPage: 1,
     // content
     contentTable: '', contentData: [],
+    // table (generic, not currently used)
+    currentTable: '', tablePage: 1, tableData: [], tableTotal: 0,
     // debounce
     _timer: null,
     _staticCache: {},
   }),
   computed: {
     contentTitle() { const t = this.contentTable; return { terminology:'Terminology', rules:'Rules', shots:'Shots Library', ref_clinic:'Referee Clinic', videos:'Videos', news:'News' }[t] || t; }
+  },
+  watch: {
+    page() { this.syncHash(); },
+    currentTable(t) { if (this.page === 'table') this.syncHash(); },
+    profilePlayer(p) { if (p && this.page === 'profile') this.syncHash(); },
+    contentTable(t) { if (t && this.page === 'content') this.syncHash(); },
   },
   methods: {
     displayRank(r) {
@@ -511,17 +519,50 @@ export default {
       const j = await this.api('/weeklies?'+p);
       this.weeklyData = j.data; this.weeklyTotal = j.total;
     },
+    async fetchTable() { this.tableData = []; this.tableTotal = 0; },
     async openContent(table) {
       this.contentTable = table;
       this.page = 'content';
       const j = await this.api('/content/'+table);
       this.contentData = j.data || [];
     },
+    syncHash() {
+      const routes = {
+        rankings: '/',
+        matches: '/matches',
+        weeklies: '/weeklies',
+        wrh: '/wrh',
+        standings: '/standings',
+      };
+      let hash = routes[this.page] || '/players';
+      if (this.page === 'profile' && this.profilePlayer) hash = `/player/${encodeURIComponent(this.profilePlayer)}`;
+      if (this.page === 'content' && this.contentTable) hash = `/content/${this.contentTable}`;
+      if (this.page === 'table' && this.currentTable) hash = `/table/${this.currentTable}`;
+      const cur = location.hash.slice(1) || '/';
+      if (cur !== hash) history.replaceState(null, '', '#' + hash);
+    },
+    navigateFromHash() {
+      const hash = location.hash.slice(1) || '/';
+      const parts = hash.split('/').filter(Boolean);
+      if (!parts.length || parts[0] === '') { this.page = 'rankings'; return; }
+      if (parts[0] === 'matches') { this.page = 'matches'; this.fetchMatches(); return; }
+      if (parts[0] === 'weeklies') { this.page = 'weeklies'; this.fetchWeeklies(); return; }
+      if (parts[0] === 'wrh') { this.page = 'wrh'; this.fetchWRH(); return; }
+      if (parts[0] === 'standings') { this.page = 'standings'; this.fetchStandings(); return; }
+      if (parts[0] === 'player' && parts[1]) { this.findAndOpenProfile(decodeURIComponent(parts[1])); return; }
+      if (parts[0] === 'content' && parts[1]) { this.openContent(parts[1]); return; }
+      if (parts[0] === 'table' && parts[1]) { this.openTable(parts[1]); return; }
+      this.page = 'rankings';
+    },
   },
   async mounted() {
+    // Listen for hash changes (back/forward buttons)
+    window.addEventListener('hashchange', () => this.navigateFromHash());
+    // Load metadata
     this.status = await this.api('/status');
     this.regions = await this.api('/regions');
-    await this.fetchPlayers();
+    // Route to the page specified in the URL hash
+    this.navigateFromHash();
   },
   components: { Pagination: { props: ['page','total','per'], emits: ['change'],
     template: '<div class="pagination"><button :disabled="page<=1" @click="$emit(\'change\',page-1)">←</button><span>{{page}} / {{Math.ceil(total/per)||1}}</span><button :disabled="page>=Math.ceil(total/per)" @click="$emit(\'change\',page+1)">→</button></div>'}}
