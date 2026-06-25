@@ -22,7 +22,10 @@ case "${1:-help}" in
     echo "Scraping MITIC ratings from airhockeyrank.com..."
     python3 archive.py --db "$SCRIPT_DIR/mitic.db"
     ;;
-  build)
+  test)
+    echo "Running tests..."
+    python3 test.py
+    ;;
     echo "Building static JSON data..."
     python3 build-static.py
     echo "Building frontend..."
