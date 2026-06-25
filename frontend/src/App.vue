@@ -557,7 +557,7 @@ export default {
     navigateFromHash() {
       const hash = location.hash.slice(1) || '/';
       const parts = hash.split('/').filter(Boolean);
-      if (!parts.length || parts[0] === '') { this.page = 'rankings'; return; }
+      if (!parts.length || parts[0] === '') { this.page = 'rankings'; this.fetchPlayers(); return; }
       if (parts[0] === 'matches') { this.page = 'matches'; this.fetchMatches(); return; }
       if (parts[0] === 'weeklies') { this.page = 'weeklies'; this.fetchWeeklies(); return; }
       if (parts[0] === 'wrh') { this.page = 'wrh'; this.fetchWRH(); return; }
@@ -565,7 +565,7 @@ export default {
       if (parts[0] === 'player' && parts[1]) { this.findAndOpenProfile(decodeURIComponent(parts[1])); return; }
       if (parts[0] === 'content' && parts[1]) { this.openContent(parts[1]); return; }
       if (parts[0] === 'table' && parts[1]) { this.openTable(parts[1]); return; }
-      this.page = 'rankings';
+      this.page = 'rankings'; this.fetchPlayers();
     },
   },
   async mounted() {
