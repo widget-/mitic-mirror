@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.db
+*.db-wal
+*.db-shm
+.scrape_snapshot.mjs
+.DS_Store
+__pycache__/
+*.pyc
+.env
+frontend/public/data/
